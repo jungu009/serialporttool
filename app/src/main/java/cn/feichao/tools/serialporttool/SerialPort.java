@@ -1,6 +1,8 @@
 package cn.feichao.tools.serialporttool;
 
 
+import android.content.Context;
+
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -18,6 +20,7 @@ public class SerialPort {
     private int baud;
     private FileInputStream in;
     private FileOutputStream out;
+    private boolean isOpen = false;
 
     static {
         System.loadLibrary("serialport");
@@ -43,13 +46,23 @@ public class SerialPort {
     }
 
 
+    public boolean isOpen() {
+        return isOpen;
+    }
+
     /**
      * 打开串口
      */
-    public void open() {
-        this.fd = open(path, baud);
+    public boolean open(Context context) {
+        boolean bool = true;
+        fd = open(path, baud);
+        if(fd == null) {
+            return false;
+        }
         out = new FileOutputStream(fd);
         in = new FileInputStream(fd);
+        isOpen = true;
+        return bool;
     }
 
     public FileInputStream getIn() {
@@ -79,6 +92,7 @@ public class SerialPort {
         }
         if(fd != null) {
             close(fd);
+            isOpen = false;
         }else {
             throw new RuntimeException("未打开设备");
         }

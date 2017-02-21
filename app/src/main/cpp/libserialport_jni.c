@@ -7,6 +7,9 @@
 #include <fcntl.h>
 #include <termios.h>
 
+#include "android/log.h"
+
+#define SERIALPORTDEBUG "serialportdebug"
 
 static speed_t getBaudrate(jint baudrate) {
     switch (baudrate) {
@@ -91,6 +94,7 @@ JNIEXPORT jobject Java_cn_feichao_tools_serialporttool_SerialPort_open(
     // reword baudrate
     speed = getBaudrate(baudrate);
     if(speed == -1) {
+        __android_log_print(ANDROID_LOG_ERROR, SERIALPORTDEBUG, "波特率无效");
         return NULL;
     }
 
@@ -99,6 +103,7 @@ JNIEXPORT jobject Java_cn_feichao_tools_serialporttool_SerialPort_open(
     fd = open(dev, O_RDWR | O_NOCTTY | O_NONBLOCK | O_NDELAY);
     (*env)->ReleaseStringChars(env, path, dev);
     if(fd == -1) {
+        __android_log_print(ANDROID_LOG_ERROR, SERIALPORTDEBUG, "串口打开失败 fd = %d", fd);
         return NULL;
     }
 
@@ -106,6 +111,7 @@ JNIEXPORT jobject Java_cn_feichao_tools_serialporttool_SerialPort_open(
     if(tcgetattr(fd, &cfg))
     {
         close(fd);
+        __android_log_print(ANDROID_LOG_ERROR, SERIALPORTDEBUG, "获取串口属性失败");
         return NULL;
     }
 
@@ -120,6 +126,7 @@ JNIEXPORT jobject Java_cn_feichao_tools_serialporttool_SerialPort_open(
 
     if (tcsetattr(fd, TCSANOW, &cfg)) {
         close(fd);
+        __android_log_print(ANDROID_LOG_ERROR, SERIALPORTDEBUG, "设置串口属性失败");
         return NULL;
     }
 

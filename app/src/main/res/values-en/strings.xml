@@ -10,4 +10,5 @@
     <string name="clear_send_str">Clear</string>
     <string name="receive_data_label_str">Receive Data:</string>
     <string name="receive_clear_str">Clear</string>
+    <string name="open_failed_str">Open Failed</string>
 </resources>

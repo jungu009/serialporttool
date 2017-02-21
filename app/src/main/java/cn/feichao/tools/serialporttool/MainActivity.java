@@ -16,6 +16,8 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import static cn.feichao.tools.serialporttool.utils.CommonUtils.asciiStrFrom;
 import static cn.feichao.tools.serialporttool.utils.CommonUtils.asciiToBytes;
@@ -24,7 +26,8 @@ import static cn.feichao.tools.serialporttool.utils.CommonUtils.hexStrFrom;
 import static cn.feichao.tools.serialporttool.utils.CommonUtils.hexToAscii;
 import static cn.feichao.tools.serialporttool.utils.CommonUtils.hexToBytes;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener{
+public class MainActivity extends AppCompatActivity implements
+        View.OnClickListener, RadioGroup.OnCheckedChangeListener{
 
     private String[] bauds = {"9600", "115200", "230400", "500000"};
     private boolean isOpen = false;
@@ -41,12 +44,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public static Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            //TODO receive data
-            if(msg.what == 123) {
-                String receiveData = (String)msg.obj;
-
-                receiveDataEditText.setText(receiveData);
-            }
+        if(msg.what == 123) {
+            SimpleDateFormat timeFormat = new SimpleDateFormat("[HH:mm:ss]");
+            String receiveData = timeFormat.format(new Date()) + "\n" + (String)msg.obj + "\n";
+            receiveDataEditText.append(receiveData);
+        }
         }
     };
 
@@ -66,53 +68,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         initRadioGroup();
     }
 
+    // TODO 优化
     private void initRadioGroup() {
         sendRadioGroup = (RadioGroup)findViewById(R.id.send_radioGroup);
-        sendRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup radioGroup, int i) {
-                int radioId = radioGroup.getCheckedRadioButtonId();
-                switch (radioId) {
-                    case R.id.send_hex:
-                        String str;
-                        if(!sendIsHex && (str = sendDataEditText.getText().toString()).length() > 0) {
-                            sendDataEditText.setText(asciiToHex(str));
-                        }
-                        sendIsHex = true;
-                        break;
-                    case R.id.send_ascii:
-                        String str1;
-                        if(sendIsHex && (str1 = sendDataEditText.getText().toString()).length() > 0) {
-                            sendDataEditText.setText(hexToAscii(str1));
-                        }
-                        sendIsHex = false;
-                        break;
-                }
-            }
-        });
+        sendRadioGroup.setOnCheckedChangeListener(this);
         receiveRadioGroup = (RadioGroup)findViewById(R.id.receive_radioGroup);
-        receiveRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup radioGroup, int i) {
-                int radioId = radioGroup.getCheckedRadioButtonId();
-                switch (radioId) {
-                    case R.id.receive_hex:
-                        String str;
-                        if(!receiveIsHex && (str = receiveDataEditText.getText().toString()).length() > 0) {
-                            receiveDataEditText.setText(asciiToHex(str));
-                        }
-                        receiveIsHex = true;
-                        break;
-                    case R.id.receive_ascii:
-                        String str1;
-                        if(receiveIsHex && (str1 = receiveDataEditText.getText().toString()).length() > 0) {
-                            receiveDataEditText.setText(hexToAscii(str1));
-                        }
-                        receiveIsHex = false;
-                        break;
-                }
-            }
-        });
+        receiveRadioGroup.setOnCheckedChangeListener(this);
     }
 
     private void initEditText() {
@@ -139,14 +100,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         File[] files = boot.listFiles(new FileFilter() {
             @Override
             public boolean accept(File pathname) {
-                boolean bool = false;
-                String name = pathname.getName();
-                if(name.contains("ttyMT")
-                        || name.contains("ttyUSB")
-                        || name.contains("ttyGS")) {
-                    bool = true;
-                }
-                return bool;
+            boolean bool = false;
+            String name = pathname.getName();
+            if(name.contains("ttyMT")
+                    || name.contains("ttyUSB")
+                    || name.contains("ttyGS")) {
+                bool = true;
+            }
+            return bool;
             }
         });
         ArrayAdapter adapter = new ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, files);
@@ -160,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.connect:
-                connect();
+                openConnect();
                 break;
             case R.id.send:
                 sendData();
@@ -176,6 +137,48 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    /**
+     * 实现hex和ascii之间的转换
+     * @param isHex 目前选择的格式是否是 hex
+     * @param data  数据显示所在的Editext
+     * @return
+     */
+    private boolean convert(boolean isHex, EditText data) {
+        String str;
+        if((str = data.getText().toString()).length() > 0) {
+            String dataStr = isHex?hexToAscii(str):asciiToHex(str);
+            if(data == null)
+                toast("数据格式有误");
+            else
+                data.setText(dataStr);
+        }
+        return !isHex;
+    }
+
+    @Override
+    public void onCheckedChanged(RadioGroup radioGroup, int i) {
+        int radioId = radioGroup.getCheckedRadioButtonId();
+        switch (radioId) {
+            case R.id.receive_hex:
+//                receiveIsHex = convert(receiveIsHex, receiveDataEditText);
+                receiveIsHex = true;
+                break;
+            case R.id.receive_ascii:
+//                receiveIsHex = convert(receiveIsHex, receiveDataEditText);
+                receiveIsHex = false;
+                break;
+            case R.id.send_hex:
+                sendIsHex = convert(sendIsHex, sendDataEditText);
+                break;
+            case R.id.send_ascii:
+                sendIsHex = convert(sendIsHex, sendDataEditText);
+                break;
+            default:
+                break;
+        }
+    }
+
+
     private void clear(TextView textView) {
         textView.setText("");
     }
@@ -184,7 +187,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         String sendData = sendDataEditText.getText().toString();
 
         if(sendData.trim().equals("")) {
-            Toast.makeText(this, "请输入发送的数据", Toast.LENGTH_SHORT).show();
+            toast("请输入发送的数据");
             return;
         }
 
@@ -195,33 +198,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             bytes = asciiToBytes(sendData);
         }
 
+        if(bytes == null) {
+            toast("数据格式有误");
+            return;
+        }
+
+        if(serialPort == null || !serialPort.isOpen()) {
+            toast("串口未打开");
+            return;
+        }
         try {
             serialPort.send(bytes);
         } catch (IOException e) {
-            e.printStackTrace();
+            toast("发送失败");
         }
+
     }
 
 
-    private void connect() {
+    private void openConnect() {
         if(!isOpen) {
-            isOpen = !isOpen;
-            String dev = ((File)serialPortSpinner.getSelectedItem()).getAbsolutePath();
-            int baud = Integer.parseInt((String)baudrateSpinner.getSelectedItem());
-            serialPort = new SerialPort(dev, baud);
-            //TODO 捕捉异常提示错误
-            serialPort.open();
-            connBtn.setText(getResources().getString(R.string.disconnect_str));
-            new ReceiveThread().start();
-            Toast.makeText(this, "连接成功", Toast.LENGTH_SHORT).show();
+            boolean bool = connect();
+            if(bool) {
+                isOpen = true;
+                new ReceiveThread().start();
+                connBtn.setText(getResources().getString(R.string.disconnect_str));
+                toast("连接成功");
+            } else {
+                toast("连接失败");
+            }
         }else {
-            isOpen = !isOpen;
+            isOpen = false;
             disconnect();
             connBtn.setText(getResources().getString(R.string.connect_str));
-            Toast.makeText(this, "断开成功", Toast.LENGTH_SHORT).show();
+            toast("断开成功");
         }
     }
 
+
+    private boolean connect() {
+        String dev = ((File)serialPortSpinner.getSelectedItem()).getAbsolutePath();
+        int baud = Integer.parseInt((String)baudrateSpinner.getSelectedItem());
+        serialPort = new SerialPort(dev, baud);
+        return serialPort.open(this);
+    }
 
     private void disconnect() {
         if(serialPort != null) {
@@ -239,38 +259,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    class ReceiveThread extends Thread {
 
-            @Override
-            public void run() {
+    private class ReceiveThread extends Thread {
 
-                byte[] bytes = new byte[512];
-                int len;
-                StringBuilder builder = new StringBuilder("");
+        @Override
+        public void run() {
 
-                try {
+            byte[] bytes = new byte[512];
+            int len;
+            StringBuilder builder = new StringBuilder("");
 
-                    while((len = serialPort.getIn().read(bytes)) != -1) {
+            try {
+
+                while((len = serialPort.getIn().read(bytes)) != -1) {
 //                                            builder.append(new String(bytes, 0, len));
-                        if(len > 0) {
-                            Message msg = new Message();
-                            msg.what = 123;
-                            if(receiveIsHex) {
-                                msg.obj = hexStrFrom(bytes, len);
-                            }else {
-                                msg.obj = asciiStrFrom(bytes, len);
-                            }
-                            handler.sendMessage(msg);
+                    if(len > 0) {
+                        Message msg = new Message();
+                        msg.what = 123;
+                        if(receiveIsHex) {
+                            msg.obj = hexStrFrom(bytes, len);
+                        }else {
+                            msg.obj = asciiStrFrom(bytes, len);
                         }
+                        handler.sendMessage(msg);
                     }
 
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    Thread.sleep(100L);
                 }
 
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+
+        }
 
     }
 
-
+    private void toast(String str) {
+        Toast.makeText(this, str, Toast.LENGTH_SHORT).show();
+    }
 }

@@ -38,6 +38,7 @@
     <EditText
         android:id="@+id/send_data"
         android:text="55 00 07 01 02 00 00 00"
+        android:hint="字节之间使用一个空格隔开"
         android:layout_width="match_parent"
         android:layout_height="100dp"
         android:layout_centerVertical="false"
